@@ -1,0 +1,8 @@
+## Interface: 70100
+## Title: LiteWeights
+## Version: @project-version@
+## Author: Xodiv-Nagrand
+## Email: mib@post.com
+## SavedVariables: LiteWeightsDB
+
+LiteWeights.lua
