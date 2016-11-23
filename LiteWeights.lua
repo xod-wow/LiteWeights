@@ -9,6 +9,8 @@
 
 ----------------------------------------------------------------------------]]--
 
+local FramesToHook = { GameTooltip, ShoppingTooltip1, ShoppingTooltip2 }
+
 LiteWeights = CreateFrame("Frame", "LiteWeights")
 LiteWeights:RegisterEvent("PLAYER_LOGIN")
 LiteWeights:SetScript("OnEvent", function (f,e,...) if f[e] then f[e](f, ...) end end)
@@ -16,7 +18,9 @@ LiteWeights:SetScript("OnEvent", function (f,e,...) if f[e] then f[e](f, ...) en
 function LiteWeights:PLAYER_LOGIN()
     print("LiteWeights loaded")
     LiteWeightsDB = LiteWeightsDB or { }
-    GameTooltip:HookScript("OnTooltipSetItem", function (...) self:OnSetItemHook(...) end)
+    for _, f in ipairs(FramesToHook) do
+        f:HookScript("OnTooltipSetItem", function (...) self:OnSetItemHook(...) end)
+    end
 end
 
 function LiteWeights:ParsePawnScale(scaleString)
@@ -46,6 +50,5 @@ function LiteWeights:OnSetItemHook(tooltipFrame)
     for _, lineArgs in ipairs(weights) do
         tooltipFrame:AddDoubleLine(unpack(lineArgs))
     end
-    -- tooltipFrame:Show()
 end
 
