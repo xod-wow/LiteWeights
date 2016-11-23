@@ -9,6 +9,37 @@
 
 ----------------------------------------------------------------------------]]--
 
+local resistanceStats = {
+    RESISTANCE0NAME,
+}
+
+local socketStats = {
+    EMPTY_SOCKET_PRISMATIC,
+    EMPTY_SOCKET_FEL,
+    EMPTY_SOCKET_IRON,
+    EMPTY_SOCKET_ARCANE,
+    EMPTY_SOCKET_SHADOW,
+}
+
+local primaryStats = {
+    ITEM_MOD_AGILITY_SHORT,
+    ITEM_MOD_INTELLECT_SHORT,
+    ITEM_MOD_STAMINA_SHORT,
+    ITEM_MOD_STRENGTH_SHORT,
+    ITEM_MOD_DAMAGE_PER_SECOND_SHORT,
+}
+
+local secondaryStats = {
+    ITEM_MOD_HASTE_RATING_SHORT,
+    ITEM_MOD_CRIT_RATING_SHORT,
+    ITEM_MOD_VERSATILITY,
+    ITEM_MOD_MASTERY_RATING_SHORT,
+}
+
+local tertiaryStats = {
+    ITEM_MOD_CR_SPEED_SHORT,
+}
+
 LiteWeights = CreateFrame("Frame", "LiteWeights")
 LiteWeights:RegisterEvent("PLAYER_LOGIN")
 LiteWeights:SetScript("OnEvent", function (f,e,...) if f[e] then f[e](f, ...) end end)
