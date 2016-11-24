@@ -10,7 +10,10 @@
 ----------------------------------------------------------------------------]]--
 
 
-local FramesToHook = { GameTooltip, ShoppingTooltip1, ShoppingTooltip2 }
+local FramesToHook = {
+    GameTooltip, ShoppingTooltip1, ShoppingTooltip2
+    ItemRefTooltip, ItemRefShoppingTooltip1, ItemRefShoppingTooltip2
+}
 
 local resistanceStats = {
     RESISTANCE0NAME,
