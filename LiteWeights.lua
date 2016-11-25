@@ -16,7 +16,6 @@ local FramesToHook = {
 }
 
 -- Default is the enUS Pawn stat names
-
 local ItemStatNameRefs = {
     ["ITEM_MOD_STAMINA_SHORT"]              = "Stamina",
 
