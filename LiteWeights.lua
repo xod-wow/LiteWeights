@@ -15,15 +15,20 @@ local FramesToHook = {
     WorldMapTooltip, WorldMapCompareTooltip1, WorldMapCompareTooltip2,
 }
 
+
+LiteWeights = CreateFrame("Frame", "LiteWeights")
+LiteWeights:RegisterEvent("PLAYER_LOGIN")
+LiteWeights:SetScript("OnEvent", function (f,e,...) if f[e] then f[e](f, ...) end end)
+
 -- Default is the enUS Pawn stat names
-local ItemStatNameRefs = {
+LiteWeights.ItemStatNameRefs = {
     ["ITEM_MOD_STAMINA_SHORT"]              = "Stamina",
 
     ["ITEM_MOD_AGILITY_SHORT"]              = "Agility",
     ["ITEM_MOD_INTELLECT_SHORT"]            = "Intellect",
     ["ITEM_MOD_STRENGTH_SHORT"]             = "Strength",
 
-    ["RESISTANCE0NAME"]                     = "Armor",
+    ["RESISTANCE0_NAME"]                    = "Armor",
 
     ["ITEM_MOD_HASTE_RATING_SHORT"]         = "HasteRating",
     ["ITEM_MOD_CRIT_RATING_SHORT"]          = "CritRating",
@@ -33,15 +38,11 @@ local ItemStatNameRefs = {
     ["EMPTY_SOCKET_PRISMATIC"]              = "PrismaticSocket",
 
     ["ITEM_MOD_CR_AVOIDANCE_SHORT"]         = "Avoidance",
-    ["ITEM_MOD_CR_LEECH_SHORT"]             = "Leech",
+    ["ITEM_MOD_CR_LIFESTEAL_SHORT"]         = "Leech",
     ["ITEM_MOD_CR_SPEED_SHORT"]             = "MovementSpeed",
 }
 
-local ItemStatReverseMap = { }
-
-LiteWeights = CreateFrame("Frame", "LiteWeights")
-LiteWeights:RegisterEvent("PLAYER_LOGIN")
-LiteWeights:SetScript("OnEvent", function (f,e,...) if f[e] then f[e](f, ...) end end)
+LiteWeights.ItemStatReverseMap = { }
 
 function LiteWeights:PLAYER_LOGIN()
     LiteWeightsDB = LiteWeightsDB or { }
@@ -51,9 +52,9 @@ function LiteWeights:PLAYER_LOGIN()
     self.db = LiteWeightsDB[class]
 
     -- Both enUS and Localized names
-    for n, v in ipairs(ItemStatNameRefs) do
-        ItemStatReverseMap[v] = n
-        ItemStatReverseMap[_G[n]] = n
+    for n, v in pairs(self.ItemStatNameRefs) do
+        self.ItemStatReverseMap[v] = n
+        self.ItemStatReverseMap[_G[n]] = n
     end
 
     for _, f in ipairs(FramesToHook) do
@@ -65,6 +66,7 @@ function LiteWeights:PLAYER_LOGIN()
 end
 
 function LiteWeights:SlashCmd(argStr)
+
     local name, weights
 
     if argStr:match("^%(") then
@@ -103,8 +105,8 @@ function LiteWeights:ParseSimpleScale(scaleString)
     end
 
     local statWeights = { }
-    for k, v in valueString:gmatch("([^=%s]+)=[%d.]+)") do
-        local statKey = ItemStatReverseMap[v]
+    for k, v in valueString:gmatch("(%S+)=([%d.]+)") do
+        local statKey = self.ItemStatReverseMap[k]
         if statKey then
             statWeights[statKey] = tonumber(v)
         end
@@ -140,8 +142,11 @@ function LiteWeights:GetItemScores(link)
     wipe(ReusableStatTable)
     GetItemStats(link, ReusableStatTable)
 
-    for n, s in pairs(self.db) do
-        tinsert(scores, { n, self:CalculateScore(ReusableStatTable, s) })
+    for statName, statWeights in pairs(self.db) do
+        local score = self:CalculateScore(ReusableStatTable, statWeights)
+        if score and score > 0 then
+            tinsert(scores, { statName, score } )
+        end
     end
 
     return scores
@@ -162,3 +167,6 @@ function LiteWeights:OnSetItemHook(tooltipFrame)
     end
 end
 
+function LiteWeights:Debug(...)
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00LiteBag:|r " .. format(...))
+end
