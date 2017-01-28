@@ -69,7 +69,9 @@ function LiteWeights:SlashCmd(argStr)
 
     local name, weights
 
-    if argStr:match("^%(") then
+    if argStr == "list" then
+        self:PrintScales()
+    elseif argStr:match("^%(") then
         name, weights = self:ParsePawnScale(argStr)
     else
         name, weights = self:ParseSimpleScale(argStr)
@@ -77,6 +79,37 @@ function LiteWeights:SlashCmd(argStr)
 
     if name then
         self.db[name] = weights
+    end
+end
+
+function LiteWeights:FormatScale(scaleName, scale, asPawn)
+    local keyOrder = {}
+    for k, v in pairs(scale) do
+        tinsert(keyOrder, k)
+    end
+
+    sort(keyOrder, function (a, b) return scale[a] > scale[b] end)
+
+    for i, k in ipairs(keyOrder) do
+        keyOrder[i] = format(
+                        "|cffcccccc%s=%0.2f|r",
+                        self.ItemStatNameRefs[k], scale[k]
+                        )
+    end
+
+    if asPawn then
+        return format('{ Pawn: v1: "%s": %s }',
+                      scaleName, table.concat(keyOrder, ', '))
+    else
+        return format('%s %s', scaleName, table.concat(keyOrder, ' '))
+    end
+end
+
+function LiteWeights:PrintScales()
+    local i = 1
+    for scaleName, scale in pairs(self.db) do
+        print(format("% 2d. %s", i, self:FormatScale(scaleName, scale)))
+        i = i + 1
     end
 end
 
@@ -111,6 +144,11 @@ function LiteWeights:ParseSimpleScale(scaleString)
             statWeights[statKey] = tonumber(v)
         end
     end
+
+    if next(statWeights) == nil then
+        return
+    end
+
     return scaleName, statWeights
 end
 
@@ -124,11 +162,24 @@ function LiteWeights:ParsePawnScale(scaleString)
     end
 end
 
+function LiteWeights:SocketScore(scale)
+    return 150 * math.max(
+                scale["ITEM_MOD_HASTE_RATING_SHORT"] or 0,
+                scale["ITEM_MOD_CRIT_RATING_SHORT"] or 0,
+                scale["ITEM_MOD_VERSATILITY"] or 0,
+                scale["ITEM_MOD_MASTERY_RATING_SHORT"] or 0
+            )
+end
+
 function LiteWeights:CalculateScore(stats, scale)
     local sum = 0
 
     for k, v in pairs(stats) do
-        sum = sum + (scale[k] or 0) * v
+        if k == "EMPTY_SOCKET_PRISMATIC" then
+            sum = sum + self:SocketScore(scale)
+        else
+            sum = sum + (scale[k] or 0) * v
+        end
     end
 
     return sum
@@ -168,5 +219,5 @@ function LiteWeights:OnSetItemHook(tooltipFrame)
 end
 
 function LiteWeights:Debug(...)
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00LiteBag:|r " .. format(...))
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00LiteWeights:|r " .. format(...))
 end
