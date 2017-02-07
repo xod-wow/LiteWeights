@@ -35,7 +35,7 @@ LiteWeights.ItemStatNameRefs = {
     ["ITEM_MOD_VERSATILITY"]                = "Versatility",
     ["ITEM_MOD_MASTERY_RATING_SHORT"]       = "MasteryRating",
 
-    ["EMPTY_SOCKET_PRISMATIC"]              = "PrismaticSocket",
+    -- ["EMPTY_SOCKET_PRISMATIC"]              = "PrismaticSocket",
 
     ["ITEM_MOD_CR_AVOIDANCE_SHORT"]         = "Avoidance",
     ["ITEM_MOD_CR_LIFESTEAL_SHORT"]         = "Leech",
@@ -53,8 +53,10 @@ function LiteWeights:PLAYER_LOGIN()
 
     -- Both enUS and Localized names
     for n, v in pairs(self.ItemStatNameRefs) do
+        self.ItemStatReverseMap[strlower(v)] = n
         self.ItemStatReverseMap[v] = n
         self.ItemStatReverseMap[_G[n]] = n
+        self.ItemStatReverseMap[strlower(_G[n])] = n
     end
 
     for _, f in ipairs(FramesToHook) do
@@ -65,12 +67,34 @@ function LiteWeights:PLAYER_LOGIN()
     SlashCmdList["LITEWEIGHTS"] = function (...) self:SlashCmd(...) end
 end
 
+function LiteWeights:PrintHelp()
+    self:PrintMessage("%s:", GAMEMENU_HELP)
+    self:PrintMessage("  %s show", SLASH_LITEWEIGHTS1)
+    self:PrintMessage("  %s (Pawn: v1: ...)", SLASH_LITEWEIGHTS1)
+    self:PrintMessage("  %s <name> stat1=value1 ...", SLASH_LITEWEIGHTS1, DELETE)
+    self:PrintMessage("  %s <name> %s", SLASH_LITEWEIGHTS1, DELETE)
+    self:PrintMessage("")
+    self:PrintMessage(STATS_LABEL)
+    for k,v in pairs(self.ItemStatNameRefs) do
+        self:PrintMessage("  %s / %s", _G[k], v)
+    end
+end
+
 function LiteWeights:SlashCmd(argStr)
 
     local name, weights
 
-    if argStr == "list" then
+    name = strlower(argStr)
+
+    if name == "show" or name == strlower(SHOW)  then
         self:PrintScales()
+        return
+    elseif name == "pawn" then
+        self:PrintScales(true)
+        return
+    elseif name == "" or name == "help" or name == strlower(HELP_LABEL) then
+        self:PrintHelp()
+        return
     elseif argStr:match("^%(") then
         name, weights = self:ParsePawnScale(argStr)
     else
@@ -105,10 +129,10 @@ function LiteWeights:FormatScale(scaleName, scale, asPawn)
     end
 end
 
-function LiteWeights:PrintScales()
+function LiteWeights:PrintScales(asPawn)
     local i = 1
     for scaleName, scale in pairs(self.db) do
-        print(format("% 2d. %s", i, self:FormatScale(scaleName, scale)))
+        print(format("% 2d. %s", i, self:FormatScale(scaleName, scale, asPawn)))
         i = i + 1
     end
 end
@@ -218,6 +242,19 @@ function LiteWeights:OnSetItemHook(tooltipFrame)
     end
 end
 
+function LiteWeights:GetActiveChatFrame()
+    for i = 1, NUM_CHAT_WINDOWS do
+        local f = _G["ChatFrame"..i]
+        if f and f:IsShown() then return f end
+    end
+    return DEFAULT_CHAT_FRAME
+end
+
+function LiteWeights:PrintMessage(...)
+    local f = self:GetActiveChatFrame()
+    f:AddMessage("|cff00ff00LiteWeights:|r " .. format(...))
+end
+
 function LiteWeights:Debug(...)
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00LiteWeights:|r " .. format(...))
+    self:PrintMessage(...)
 end
