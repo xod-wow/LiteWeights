@@ -40,6 +40,8 @@ LiteWeights.ItemStatNameRefs = {
     ["ITEM_MOD_CR_AVOIDANCE_SHORT"]         = "Avoidance",
     ["ITEM_MOD_CR_LIFESTEAL_SHORT"]         = "Leech",
     ["ITEM_MOD_CR_SPEED_SHORT"]             = "MovementSpeed",
+
+    ["ITEM_MOD_DAMAGE_PER_SECOND_SHORT"]    = "DPS",
 }
 
 LiteWeights.ItemStatReverseMap = { }
@@ -54,8 +56,6 @@ function LiteWeights:PLAYER_LOGIN()
     -- Both enUS and Localized names
     for n, v in pairs(self.ItemStatNameRefs) do
         self.ItemStatReverseMap[strlower(v)] = n
-        self.ItemStatReverseMap[v] = n
-        self.ItemStatReverseMap[_G[n]] = n
         self.ItemStatReverseMap[strlower(_G[n])] = n
     end
 
@@ -132,7 +132,7 @@ end
 function LiteWeights:PrintScales(asPawn)
     local i = 1
     for scaleName, scale in pairs(self.db) do
-        print(format("% 2d. %s", i, self:FormatScale(scaleName, scale, asPawn)))
+        self:PrintMessage(format("% 2d. %s", i, self:FormatScale(scaleName, scale, asPawn)))
         i = i + 1
     end
 end
@@ -163,9 +163,12 @@ function LiteWeights:ParseSimpleScale(scaleString)
 
     local statWeights = { }
     for k, v in valueString:gmatch("(%S+)=([%d.]+)") do
-        local statKey = self.ItemStatReverseMap[k]
-        if statKey then
-            statWeights[statKey] = tonumber(v)
+        local n = k:len()
+        for stat, statKey in pairs(self.ItemStatReverseMap) do
+            if stat:sub(1,n):lower() == k:lower() then
+                statWeights[statKey] = tonumber(v)
+                break
+            end
         end
     end
 
@@ -220,7 +223,7 @@ function LiteWeights:GetItemScores(link)
     for statName, statWeights in pairs(self.db) do
         local score = self:CalculateScore(ReusableStatTable, statWeights)
         if score and score > 0 then
-            tinsert(scores, { statName, score } )
+            tinsert(scores, { statName, string.format('%0.2f', score) } )
         end
     end
 
