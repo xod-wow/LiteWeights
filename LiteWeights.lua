@@ -9,6 +9,8 @@
 
 ----------------------------------------------------------------------------]]--
 
+local GEM_SECONDARY_STAT = 40
+
 local FramesToHook = {
     GameTooltip, ShoppingTooltip1, ShoppingTooltip2,
     ItemRefTooltip, ItemRefShoppingTooltip1, ItemRefShoppingTooltip2,
@@ -53,6 +55,19 @@ function LiteWeights:PLAYER_LOGIN()
     LiteWeightsDB[class] = LiteWeightsDB[class] or { }
     self.db = LiteWeightsDB[class]
 
+    -- DB convert
+    local badKeys = {}
+    for k,v in pairs(self.db) do
+        if type(k) ~= "number" then
+            badKeys[k] = v
+        end
+    end
+    for k,v in pairs(badKeys) do
+        self.db[k] = nil
+        tinsert(self.db, { ['name'] = k, ['weights'] = v })
+    end
+    table.sort(self.db, function (a, b) return a.name < b.name end)
+
     -- Both enUS and Localized names
     for n, v in pairs(self.ItemStatNameRefs) do
         self.ItemStatReverseMap[strlower(v)] = n
@@ -70,70 +85,83 @@ end
 function LiteWeights:PrintHelp()
     self:PrintMessage("%s:", GAMEMENU_HELP)
     self:PrintMessage("  %s show", SLASH_LITEWEIGHTS1)
-    self:PrintMessage("  %s (Pawn: v1: ...)", SLASH_LITEWEIGHTS1)
-    self:PrintMessage("  %s <name> stat1=value1 ...", SLASH_LITEWEIGHTS1, DELETE)
-    self:PrintMessage("  %s <name> %s", SLASH_LITEWEIGHTS1, DELETE)
-    self:PrintMessage("")
+    self:PrintMessage("  %s add (Pawn: v1: ...)", SLASH_LITEWEIGHTS1)
+    self:PrintMessage("  %s add <name> stat1=value1 ...", SLASH_LITEWEIGHTS1, DELETE)
+    self:PrintMessage("  %s del <name>", SLASH_LITEWEIGHTS1, DELETE)
+end
+
+function LiteWeights:PrintStats()
     self:PrintMessage(STATS_LABEL)
     for k,v in pairs(self.ItemStatNameRefs) do
         self:PrintMessage("  %s / %s", _G[k], v)
     end
 end
 
-function LiteWeights:SlashCmd(argStr)
+function LiteWeights:SlashCmd(arg)
 
-    local name, weights
-
-    name = strlower(argStr)
-
-    if name == "show" or name == strlower(SHOW)  then
+    if arg == "show" or arg == strlower(SHOW)  then
         self:PrintScales()
         return
-    elseif name == "pawn" then
-        self:PrintScales(true)
-        return
-    elseif name == "" or name == "help" or name == strlower(HELP_LABEL) then
+    end
+
+    if arg == "" or arg == "help" or arg == strlower(HELP_LABEL) then
         self:PrintHelp()
         return
-    elseif argStr:match("^%(") then
-        name, weights = self:ParsePawnScale(argStr)
-    else
-        name, weights = self:ParseSimpleScale(argStr)
     end
 
-    if name then
-        self.db[name] = weights
+    if arg == "wipe" then
+        self:PrintMessage("Deleting all weights.")
+        table.wipe(self.db)
+        return
     end
+
+    local arg1, arg2 = string.split(' ', arg, 2)
+
+    if arg1 == "add" or arg1 == strlower(ADD) then
+        local name, weights
+
+        if arg2:match("^%(") then
+            name, weights = self:ParsePawnScale(arg2)
+        else
+            name, weights = self:ParseSimpleScale(arg2)
+        end
+        if name and weights then
+            tinsert(self.db, { ['name'] = name, ['weights'] = weights })
+            table.sort(self.db, function (a, b) return a.name < b.name end)
+        end
+        return
+    end
+
+    if arg1 == "del" or arg1 == "delete" or arg1 == strlower(DELETE) then
+        local n = tonumber(arg2)
+        if n then
+            table.remove(self.db, n)
+        end
+    end
+        
+    self:PrintHelp()
 end
 
-function LiteWeights:FormatScale(scaleName, scale, asPawn)
+function LiteWeights:PrintWeights(weights)
     local keyOrder = {}
-    for k, v in pairs(scale) do
+    for k, v in pairs(weights) do
         tinsert(keyOrder, k)
     end
 
-    sort(keyOrder, function (a, b) return scale[a] > scale[b] end)
+    table.sort(keyOrder, function (a, b) return weights[a] > weights[b] end)
 
     for i, k in ipairs(keyOrder) do
-        keyOrder[i] = format(
-                        "|cffcccccc%s=%0.2f|r",
-                        self.ItemStatNameRefs[k], scale[k]
-                        )
-    end
-
-    if asPawn then
-        return format('{ Pawn: v1: "%s": %s }',
-                      scaleName, table.concat(keyOrder, ', '))
-    else
-        return format('%s %s', scaleName, table.concat(keyOrder, ' '))
+        self:PrintMessage(
+                    "        |cffcccccc%s = %0.2f|r",
+                    self.ItemStatNameRefs[k], weights[k]
+                )
     end
 end
 
-function LiteWeights:PrintScales(asPawn)
-    local i = 1
-    for scaleName, scale in pairs(self.db) do
-        self:PrintMessage(format("% 2d. %s", i, self:FormatScale(scaleName, scale, asPawn)))
-        i = i + 1
+function LiteWeights:PrintScales()
+    for i, scale in ipairs(self.db) do 
+        self:PrintMessage(format("% 2d. %s", i, scale.name))
+        self:PrintWeights(scale.weights)
     end
 end
 
@@ -190,7 +218,7 @@ function LiteWeights:ParsePawnScale(scaleString)
 end
 
 function LiteWeights:SocketScore(scale)
-    return 150 * math.max(
+    return GEM_SECONDARY_STAT * math.max(
                 scale["ITEM_MOD_HASTE_RATING_SHORT"] or 0,
                 scale["ITEM_MOD_CRIT_RATING_SHORT"] or 0,
                 scale["ITEM_MOD_VERSATILITY"] or 0,
@@ -220,10 +248,10 @@ function LiteWeights:GetItemScores(link)
     wipe(ReusableStatTable)
     GetItemStats(link, ReusableStatTable)
 
-    for statName, statWeights in pairs(self.db) do
-        local score = self:CalculateScore(ReusableStatTable, statWeights)
+    for _, scale in ipairs(self.db) do
+        local score = self:CalculateScore(ReusableStatTable, scale.weights)
         if score and score > 0 then
-            tinsert(scores, { statName, string.format('%0.2f', score) } )
+            tinsert(scores, { scale.name, string.format('%0.2f', score) } )
         end
     end
 
