@@ -14,9 +14,7 @@ local GEM_SECONDARY_STAT = 40
 local FramesToHook = {
     GameTooltip, ShoppingTooltip1, ShoppingTooltip2,
     ItemRefTooltip, ItemRefShoppingTooltip1, ItemRefShoppingTooltip2,
-    WorldMapTooltip, WorldMapCompareTooltip1, WorldMapCompareTooltip2,
 }
-
 
 LiteWeights = CreateFrame("Frame", "LiteWeights")
 LiteWeights:RegisterEvent("PLAYER_LOGIN")
@@ -64,7 +62,7 @@ function LiteWeights:PLAYER_LOGIN()
     end
     for k,v in pairs(badKeys) do
         self.db[k] = nil
-        tinsert(self.db, { ['name'] = k, ['weights'] = v })
+        table.insert(self.db, { ['name'] = k, ['weights'] = v })
     end
     table.sort(self.db, function (a, b) return a.name < b.name end)
 
@@ -126,7 +124,8 @@ function LiteWeights:SlashCmd(arg)
             name, weights = self:ParseSimpleScale(arg2)
         end
         if name and weights then
-            tinsert(self.db, { ['name'] = name, ['weights'] = weights })
+            self:PrintMessage("Adding weight " .. name)
+            table.insert(self.db, { ['name'] = name, ['weights'] = weights })
             table.sort(self.db, function (a, b) return a.name < b.name end)
         end
         return
@@ -134,9 +133,12 @@ function LiteWeights:SlashCmd(arg)
 
     if arg1 == "del" or arg1 == "delete" or arg1 == strlower(DELETE) then
         local n = tonumber(arg2)
-        if n then
+        if n and self.db[n] then
+            local name = self.db[n]
+            self:PrintMessage("Deleting weight %d: %s", n, self.db[n].name)
             table.remove(self.db, n)
         end
+        return
     end
         
     self:PrintHelp()
@@ -145,7 +147,7 @@ end
 function LiteWeights:PrintWeights(weights)
     local keyOrder = {}
     for k, v in pairs(weights) do
-        tinsert(keyOrder, k)
+        table.insert(keyOrder, k)
     end
 
     table.sort(keyOrder, function (a, b) return weights[a] > weights[b] end)
@@ -178,15 +180,23 @@ function LiteWeights:ParseSimpleScale(scaleString)
     elseif scaleString:match("^'") then
         scaleName, valueString = scaleString:match("^'([^']+)'%s+(.*)$")
     else
-        scaleName, valueString = scaleString:match('^(%S+)%s+(%S+)$')
+        local nameFinished
+        local nameWords, valueWords = {}, {}
+        for word in scaleString:gmatch('%S+') do
+            if word:find('=') then nameFinished = true end
+            if nameFinished then
+                table.insert(valueWords, word)
+            else
+                table.insert(nameWords, word)
+            end
+        end
+        scaleName = table.concat(nameWords, ' ')
+        valueString = table.concat(valueWords, ' ')
     end
 
     if not scaleName or not valueString then
+        self:PrintMessage("Invalid string, aborting.")
         return
-    end
-
-    if valueString == DELETE or valueString == "delete" then
-        return scaleName, nil
     end
 
     local statWeights = { }
@@ -251,7 +261,7 @@ function LiteWeights:GetItemScores(link)
     for _, scale in ipairs(self.db) do
         local score = self:CalculateScore(ReusableStatTable, scale.weights)
         if score and score > 0 then
-            tinsert(scores, { scale.name, string.format('%0.2f', score) } )
+            table.insert(scores, { scale.name, string.format('%0.2f', score) } )
         end
     end
 
