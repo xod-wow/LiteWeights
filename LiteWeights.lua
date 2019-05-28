@@ -2,7 +2,7 @@
 
   LiteWeights/LiteWeights.lua
 
-  Copyright 2016 Mike Battersby
+  Copyright 2016-2019 Mike Battersby
 
   Released under the terms of the GNU General Public License version 2 (GPLv2).
   See the file LICENSE.txt.
