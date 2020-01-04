@@ -283,16 +283,8 @@ function LiteWeights:OnSetItemHook(tooltipFrame)
     end
 end
 
-function LiteWeights:GetActiveChatFrame()
-    for i = 1, NUM_CHAT_WINDOWS do
-        local f = _G["ChatFrame"..i]
-        if f and f:IsShown() then return f end
-    end
-    return DEFAULT_CHAT_FRAME
-end
-
 function LiteWeights:PrintMessage(...)
-    local f = self:GetActiveChatFrame()
+    local f = SELECTED_CHAT_FRAME or DEFAULT_CHAT_FRAME
     f:AddMessage("|cff00ff00LiteWeights:|r " .. format(...))
 end
 
